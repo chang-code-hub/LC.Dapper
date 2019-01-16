@@ -13,9 +13,9 @@
     <None Remove="Test.DB.sdf" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Dapper\Dapper.csproj" />
-    <ProjectReference Include="..\Dapper.Contrib\Dapper.Contrib.csproj" />
-    <ProjectReference Include="..\Dapper.SqlBuilder\Dapper.SqlBuilder.csproj" />
+    <ProjectReference Include="..\Dapper.Contrib\LC.Dapper.Contrib.csproj" />
+    <ProjectReference Include="..\Dapper.SqlBuilder\LC.Dapper.SqlBuilder.csproj" />
+    <ProjectReference Include="..\Dapper\LC.Dapper.csproj" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="1.1.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.3.0" />
     <PackageReference Include="MySqlConnector" Version="0.44.1" />

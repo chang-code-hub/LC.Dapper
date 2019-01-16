@@ -9,9 +9,9 @@
     <TargetFrameworks>net462</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Dapper\Dapper.csproj" />
-    <ProjectReference Include="..\Dapper.Contrib\Dapper.Contrib.csproj" />
-    <ProjectReference Include="..\Dapper.EntityFramework\Dapper.EntityFramework.csproj" />
+    <ProjectReference Include="..\Dapper.Contrib\LC.Dapper.Contrib.csproj" />
+    <ProjectReference Include="..\Dapper.EntityFramework\LC.Dapper.EntityFramework.csproj" />
+    <ProjectReference Include="..\Dapper\LC.Dapper.csproj" />
     <PackageReference Include="Dashing" Version="2.0.7" />
     <PackageReference Include="Dashing.Weaver" Version="2.0.7" />
     <PackageReference Include="Belgrade.Sql.Client" Version="1.1.4" />

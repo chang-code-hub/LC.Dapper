@@ -6,7 +6,7 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
-    <TargetFrameworks>net452;netcoreapp1.0;netcoreapp2.0</TargetFrameworks>
+    <TargetFrameworks>net452;netcoreapp2.0</TargetFrameworks>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
@@ -17,8 +17,8 @@
     <None Remove="Test.DB.sdf" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Dapper\Dapper.csproj" />
-    <ProjectReference Include="..\Dapper.Contrib\Dapper.Contrib.csproj" />
+    <ProjectReference Include="..\Dapper.Contrib\LC.Dapper.Contrib.csproj" />
+    <ProjectReference Include="..\Dapper\LC.Dapper.csproj" />
     <PackageReference Include="FirebirdSql.Data.FirebirdClient" Version="5.9.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.3.0" />
     <PackageReference Include="MySqlConnector" Version="0.44.1" />
@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net452'">
-    <ProjectReference Include="..\Dapper.EntityFramework\Dapper.EntityFramework.csproj" />
+    <ProjectReference Include="..\Dapper.EntityFramework\LC.Dapper.EntityFramework.csproj" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="1.1.1" />
     <PackageReference Include="Microsoft.SqlServer.Types" Version="14.0.314.76" />
     <Reference Include="System.Configuration" />

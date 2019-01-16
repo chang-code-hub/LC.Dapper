@@ -2428,12 +2428,18 @@ namespace Dapper
 
             il.Emit(OpCodes.Ldarg_0); // stack is now [command]
             il.EmitCall(OpCodes.Callvirt, typeof(IDbCommand).GetProperty(nameof(IDbCommand.Parameters)).GetGetMethod(), null); // stack is now [parameters]
-
             var allTypeProps = type.GetProperties();
+#if NETSTANDARD1_3
+            bool isUdfAccesser = false;
+#else
+            bool isUdfAccesser = type.GetInterface(nameof(IUdfAccesser)) != null;
+
+#endif
             var propsList = new List<PropertyInfo>(allTypeProps.Length);
             for (int i = 0; i < allTypeProps.Length; ++i)
             {
                 var p = allTypeProps[i];
+                if (isUdfAccesser && p.Name == nameof(IUdfAccesser.UdfColumns)) continue;
                 if (p.GetIndexParameters().Length == 0)
                     propsList.Add(p);
             }
@@ -2499,6 +2505,10 @@ namespace Dapper
             }
 
             var callOpCode = isStruct ? OpCodes.Call : OpCodes.Callvirt;
+            if (isUdfAccesser)
+            {
+
+            }
             foreach (var prop in props)
             {
                 if (typeof(ICustomQueryParameter).IsAssignableFrom(prop.PropertyType))
@@ -3190,12 +3200,19 @@ namespace Dapper
             var members = IsValueTuple(type) ? GetValueTupleMembers(type, names) : ((specializedConstructor != null
                 ? names.Select(n => typeMap.GetConstructorParameter(specializedConstructor, n))
                 : names.Select(n => typeMap.GetMember(n))).ToList());
+#if NETSTANDARD1_3
+            var isUdfAccesser = false;
+#else
+            var isUdfAccesser = type.GetInterface(nameof(IUdfAccesser),false) != null;
+#endif
+            bool udfActive = false;
 
             // stack is now [target]
 
             bool first = true;
             var allDone = il.DefineLabel();
             int enumDeclareLocal = -1, valueCopyLocal = il.DeclareLocal(typeof(object)).LocalIndex;
+            int dynamicLocal = il.DeclareLocal(typeof(Dictionary<string,object>)).LocalIndex;
             bool applyNullSetting = Settings.ApplyNullValues;
             foreach (var item in members)
             {
@@ -3364,6 +3381,55 @@ namespace Dapper
 
                     il.MarkLabel(finishLabel);
                 }
+
+                if (isUdfAccesser)
+                {
+                    if (!udfActive)
+                    {
+                        udfActive = true;
+                        il.Emit(OpCodes.Call, StringComparerIgnoreCase.GetMethod);
+                        il.Emit(OpCodes.Newobj, DynamicParametersConstructor);
+                        StoreLocal(il, dynamicLocal);
+
+                    }
+                }
+                if (item == null)
+                {
+                    Label isDbNullLabel = il.DefineLabel();
+                    Label finishLabel = il.DefineLabel();
+
+
+                    il.Emit(OpCodes.Ldarg_0); // stack is now [target][target][reader]
+                    EmitInt32(il, index); // stack is now [target][target][reader][index]
+                    il.Emit(OpCodes.Dup);// stack is now [target][target][reader][index][index]
+                    il.Emit(OpCodes.Stloc_0);// stack is now [target][target][reader][index]
+                    il.Emit(OpCodes.Callvirt, getItem); // stack is now [target][target][value-as-object]
+                    il.Emit(OpCodes.Dup); // stack is now [target][target][value-as-object][value-as-object]
+                    StoreLocal(il, valueCopyLocal);
+                    //
+
+                    il.Emit(OpCodes.Dup); // stack is now [target][target][value][value]
+                    il.Emit(OpCodes.Isinst, typeof(DBNull)); // stack is now [target][target][value-as-object][DBNull or null]
+                    il.Emit(OpCodes.Brtrue_S, isDbNullLabel); // stack is now [target][target][value-as-object]
+
+                    //il.Emit(OpCodes.Pop);
+
+                    LoadLocal(il, dynamicLocal);
+                    il.Emit(OpCodes.Ldstr, names[index]);
+                    LoadLocal(il, valueCopyLocal);
+                    il.Emit(OpCodes.Call, AddDictionary);
+                    il.Emit(OpCodes.Br_S, finishLabel); 
+
+
+                    il.MarkLabel(isDbNullLabel);
+                    LoadLocal(il, dynamicLocal);
+                    il.Emit(OpCodes.Ldstr, names[index]);
+                    il.Emit(OpCodes.Ldnull);
+                    il.Emit(OpCodes.Call, AddDictionary);
+
+                    il.MarkLabel(finishLabel);
+                    il.Emit(OpCodes.Pop);
+                }
                 first = false;
                 index++;
             }
@@ -3379,6 +3445,13 @@ namespace Dapper
                 }
                 il.Emit(OpCodes.Stloc_1); // stack is empty
 #if !NETSTANDARD1_3
+                if (isUdfAccesser)
+                {
+                    il.Emit(OpCodes.Ldloc_1);
+                    LoadLocal(il, dynamicLocal);
+                    il.Emit(type.IsValueType() ? OpCodes.Call : OpCodes.Callvirt, type.GetProperty(nameof(IUdfAccesser.UdfColumns)).SetMethod); // stack is now [target]
+                }
+
                 if (supportInitialize)
                 {
                     il.Emit(OpCodes.Ldloc_1);
@@ -3400,11 +3473,14 @@ namespace Dapper
                 il.Emit(OpCodes.Box, type);
             }
             il.Emit(OpCodes.Ret);
-
+             
             var funcType = System.Linq.Expressions.Expression.GetFuncType(typeof(IDataReader), returnType);
             return (Func<IDataReader, object>)dm.CreateDelegate(funcType);
         }
-
+        
+        private static readonly PropertyInfo StringComparerIgnoreCase = typeof(StringComparer).GetProperty( nameof(StringComparer.OrdinalIgnoreCase), BindingFlags.Static|BindingFlags.Public);
+        private static readonly ConstructorInfo DynamicParametersConstructor = typeof(Dictionary<string, object>).GetConstructor( new Type[]{ typeof(StringComparer) });
+        private static readonly MethodInfo AddDictionary = typeof(Dictionary<string,object>).GetMethod("Add");
         private static void FlexibleConvertBoxedFromHeadOfStack(ILGenerator il, Type from, Type to, Type via)
         {
             MethodInfo op;
