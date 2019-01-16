@@ -51,15 +51,15 @@ CREATE TEMPORARY TABLE IF NOT EXISTS `bar` (
   insert bar (id, bool_val) values (2, 0);
   insert bar (id, bool_val,add_col) values (3, 1, 1);");
 
-                //conn.Execute("insert bar (id, bool_val, add_col) values (@id, @bool_val, @add_col)", new MySqlHasBool()
-                //{
-                //    Id = 1992,
-                //    Bool_Val = true,
-                //    UdfColumns = new Dictionary<string, object>()
-                //    {
-                //        { "add_col", 3614585 }
-                //    }
-                //});
+                conn.Execute("insert bar (id, bool_val, add_col) values (@id, @bool_val, @add_col)", new MySqlHasBool()
+                {
+                    Id = 111,
+                    Bool_Val = true,
+                    UdfColumns = new Dictionary<string, object>()
+                    {
+                        { "add_col", true }
+                    }
+                });
 
                 var rows = conn.Query<MySqlHasBool>("select * from bar;").ToDictionary(x => x.Id);
 

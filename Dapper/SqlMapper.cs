@@ -1920,9 +1920,35 @@ namespace Dapper
             {
                 result = command.CreateParameter();
                 result.ParameterName = name;
+                result.Direction = ParameterDirection.Input;
+
                 parameters.Add(result);
             }
             return result;
+        }
+
+        /// <summary>
+        /// 添加参数
+        /// </summary>
+        /// <param name="parameters"></param>
+        /// <param name="command"></param>
+        internal static void AddParameters(IDictionary<string, object> parameters, IDbCommand command)
+        {
+            if (parameters == null) return;
+            foreach (var kv in parameters)
+            {
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = kv.Key;
+
+#pragma warning disable 618
+                parameter.Value = SanitizeParameterValue(kv.Value);
+                if(kv.Value!=null)
+                    parameter.DbType = LookupDbType(kv.Value.GetType(), "", true, out ITypeHandler handler);
+#pragma warning restore 618
+
+                command.Parameters.Add(parameter);
+
+            }
         }
 
         internal static int GetListPaddingExtraCount(int count)
@@ -2439,7 +2465,7 @@ namespace Dapper
             for (int i = 0; i < allTypeProps.Length; ++i)
             {
                 var p = allTypeProps[i];
-                if (isUdfAccesser && p.Name == nameof(IUdfAccesser.UdfColumns)) continue;
+                //if (isUdfAccesser && p.Name == nameof(IUdfAccesser.UdfColumns)) continue;
                 if (p.GetIndexParameters().Length == 0)
                     propsList.Add(p);
             }
@@ -2506,8 +2532,12 @@ namespace Dapper
 
             var callOpCode = isStruct ? OpCodes.Call : OpCodes.Callvirt;
             if (isUdfAccesser)
-            {
-
+            { 
+                
+                il.Emit(OpCodes.Ldloc_0);// stack is now [parameters] [typed-param]
+                il.Emit(callOpCode, type.GetProperty(nameof(IUdfAccesser.UdfColumns)).GetMethod); // stack is [parameters] [custom]
+                il.Emit(OpCodes.Ldarg_0); // stack is now [parameters] [custom] [command]
+                il.Emit(OpCodes.Call, typeof(SqlMapper).GetMethod(nameof(AddParameters), BindingFlags.Static|BindingFlags.NonPublic)); // stack is now [parameters] 
             }
             foreach (var prop in props)
             {
