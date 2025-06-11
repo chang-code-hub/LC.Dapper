@@ -3,18 +3,21 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Data.Common;
 using System.Data.SqlTypes;
-using System.Dynamic;
-using System.Linq;
-using Xunit;
-using System.Globalization;
-using System.Text.RegularExpressions;
 using System.Diagnostics;
+using System.Dynamic;
+using System.Globalization;
+using System.Linq;
+using System.Text.RegularExpressions;
+using Xunit;
 
 #if ENTITY_FRAMEWORK
 using System.Data.Entity.Spatial;
 using Microsoft.SqlServer.Types;
 #endif
+
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Dapper.Tests
 {
@@ -60,16 +63,22 @@ namespace Dapper.Tests
 
         private static IEnumerable<IDataRecord> CreateSqlDataRecordList(IDbCommand command, IEnumerable<int> numbers)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             if (command is System.Data.SqlClient.SqlCommand) return CreateSqlDataRecordList_SD(numbers);
+#pragma warning restore CS0618 // Type or member is obsolete
             if (command is Microsoft.Data.SqlClient.SqlCommand) return CreateSqlDataRecordList_MD(numbers);
             throw new ArgumentException(nameof(command));
         }
         private static IEnumerable<IDataRecord> CreateSqlDataRecordList(IDbConnection connection, IEnumerable<int> numbers)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             if (connection is System.Data.SqlClient.SqlConnection) return CreateSqlDataRecordList_SD(numbers);
+#pragma warning restore CS0618 // Type or member is obsolete
             if (connection is Microsoft.Data.SqlClient.SqlConnection) return CreateSqlDataRecordList_MD(numbers);
             throw new ArgumentException(nameof(connection));
         }
+
+#pragma warning disable CS0618 // Type or member is obsolete
         private static List<Microsoft.SqlServer.Server.SqlDataRecord> CreateSqlDataRecordList_SD(IEnumerable<int> numbers)
         {
             var number_list = new List<Microsoft.SqlServer.Server.SqlDataRecord>();
@@ -87,6 +96,7 @@ namespace Dapper.Tests
 
             return number_list;
         }
+#pragma warning restore CS0618 // Type or member is obsolete
 
         private static List<Microsoft.Data.SqlClient.Server.SqlDataRecord> CreateSqlDataRecordList_MD(IEnumerable<int> numbers)
         {
@@ -146,6 +156,7 @@ namespace Dapper.Tests
 
         private static IDbDataParameter AddStructured(IDbCommand command, object value)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             if (command is System.Data.SqlClient.SqlCommand sdcmd)
             {
                 var p = sdcmd.Parameters.Add("integers", SqlDbType.Structured);
@@ -154,6 +165,7 @@ namespace Dapper.Tests
                 p.Value = value;
                 return p;
             }
+#pragma warning restore CS0618 // Type or member is obsolete
             else if (command is Microsoft.Data.SqlClient.SqlCommand mdcmd)
             {
                 var p = mdcmd.Parameters.Add("integers", SqlDbType.Structured);
@@ -496,11 +508,13 @@ namespace Dapper.Tests
 
                 // Variable type has to be IEnumerable<SqlDataRecord> for TypeHandler to kick in.
                 object args;
+#pragma warning disable CS0618 // Type or member is obsolete
                 if (connection is System.Data.SqlClient.SqlConnection)
                 {
                     IEnumerable<Microsoft.SqlServer.Server.SqlDataRecord> records = CreateSqlDataRecordList_SD(new int[] { 1, 2, 3 });
                     args = new { integers = records };
                 }
+#pragma warning restore CS0618 // Type or member is obsolete
                 else if (connection is Microsoft.Data.SqlClient.SqlConnection)
                 {
                     IEnumerable<Microsoft.Data.SqlClient.Server.SqlDataRecord> records = CreateSqlDataRecordList_MD(new int[] { 1, 2, 3 });
@@ -652,7 +666,7 @@ namespace Dapper.Tests
 
         public class WithInit : ISupportInitialize
         {
-            public string Value { get; set; }
+            public string? Value { get; set; }
             public int Flags { get; set; }
 
             void ISupportInitialize.BeginInit() => Flags++;
@@ -717,15 +731,15 @@ namespace Dapper.Tests
         private class HazGeo
         {
             public int Id { get; set; }
-            public DbGeography Geo { get; set; }
-            public DbGeometry Geometry { get; set; }
+            public DbGeography? Geo { get; set; }
+            public DbGeometry? Geometry { get; set; }
         }
 
         private class HazSqlGeo
         {
             public int Id { get; set; }
-            public SqlGeography Geo { get; set; }
-            public SqlGeometry Geometry { get; set; }
+            public SqlGeography? Geo { get; set; }
+            public SqlGeometry? Geometry { get; set; }
         }
 
         [Fact]
@@ -1056,8 +1070,8 @@ option (optimize for (@vals unKnoWn))";
             p.Output(bob, b => b.PersonId);
             p.Output(bob, b => b.Occupation);
             p.Output(bob, b => b.NumberOfLegs);
-            p.Output(bob, b => b.Address.Name);
-            p.Output(bob, b => b.Address.PersonId);
+            p.Output(bob, b => b.Address!.Name);
+            p.Output(bob, b => b.Address!.PersonId);
 
             connection.Execute(@"
 SET @Occupation = 'grillmaster' 
@@ -1084,8 +1098,8 @@ SET @AddressPersonId = @PersonId", p);
                 p.Output(bob, b => b.PersonId);
                 p.Output(bob, b => b.Occupation);
                 p.Output(bob, b => b.NumberOfLegs);
-                p.Output(bob, b => b.Address.Name);
-                p.Output(bob, b => b.Address.PersonId);
+                p.Output(bob, b => b.Address!.Name);
+                p.Output(bob, b => b.Address!.PersonId);
 
                 var result = (int)connection.ExecuteScalar(@"
 SET @Occupation = 'grillmaster' 
@@ -1093,7 +1107,7 @@ SET @PersonId = @PersonId + 1
 SET @NumberOfLegs = @NumberOfLegs - 1
 SET @AddressName = 'bobs burgers'
 SET @AddressPersonId = @PersonId
-select 42", p);
+select 42", p)!;
 
                 Assert.Equal("grillmaster", bob.Occupation);
                 Assert.Equal(2, bob.PersonId);
@@ -1115,8 +1129,8 @@ select 42", p);
                 p.Output(bob, b => b.PersonId);
                 p.Output(bob, b => b.Occupation);
                 p.Output(bob, b => b.NumberOfLegs);
-                p.Output(bob, b => b.Address.Name);
-                p.Output(bob, b => b.Address.PersonId);
+                p.Output(bob, b => b.Address!.Name);
+                p.Output(bob, b => b.Address!.PersonId);
 
                 var result = connection.Query<int>(@"
 SET @Occupation = 'grillmaster' 
@@ -1146,8 +1160,8 @@ select 42", p, buffered: true).Single();
                 p.Output(bob, b => b.PersonId);
                 p.Output(bob, b => b.Occupation);
                 p.Output(bob, b => b.NumberOfLegs);
-                p.Output(bob, b => b.Address.Name);
-                p.Output(bob, b => b.Address.PersonId);
+                p.Output(bob, b => b.Address!.Name);
+                p.Output(bob, b => b.Address!.PersonId);
 
                 var result = connection.Query<int>(@"
 SET @Occupation = 'grillmaster' 
@@ -1177,8 +1191,8 @@ select 42", p, buffered: false).Single();
                 p.Output(bob, b => b.PersonId);
                 p.Output(bob, b => b.Occupation);
                 p.Output(bob, b => b.NumberOfLegs);
-                p.Output(bob, b => b.Address.Name);
-                p.Output(bob, b => b.Address.PersonId);
+                p.Output(bob, b => b.Address!.Name);
+                p.Output(bob, b => b.Address!.PersonId);
 
                 int x, y;
                 using (var multi = connection.QueryMultiple(@"
@@ -1232,7 +1246,7 @@ SET @AddressPersonId = @PersonId", p))
 
         public class HazX
         {
-            public string X { get; set; }
+            public string? X { get; set; }
         }
 
         [Fact]
@@ -1308,7 +1322,7 @@ end");
         public class ParameterWithIndexer
         {
             public int A { get; set; }
-            public virtual string this[string columnName]
+            public virtual string? this[string columnName]
             {
                 get { return null; }
                 set { }
@@ -1331,13 +1345,13 @@ end");
 
         public class MultipleParametersWithIndexerDeclaringType
         {
-            public object this[object field]
+            public object? this[object field]
             {
                 get { return null; }
                 set { }
             }
 
-            public object this[object field, int index]
+            public object? this[object field, int index]
             {
                 get { return null; }
                 set { }
@@ -1358,15 +1372,16 @@ end");
             var fromDb = connection.Query<Dyno>("select * from #Dyno where Id=@Id", orig).Single();
             Assert.Equal((Guid)fromDb.Id, guid);
             Assert.Equal("T Rex", fromDb.Name);
+            Assert.NotNull(fromDb.Foo);
             Assert.Equal(123L, (long)fromDb.Foo);
         }
 
         public class Dyno
         {
-            public dynamic Id { get; set; }
-            public string Name { get; set; }
+            public dynamic? Id { get; set; }
+            public string? Name { get; set; }
 
-            public object Foo { get; set; }
+            public object? Foo { get; set; }
         }
 
         [Fact]
@@ -1509,6 +1524,36 @@ SELECT * FROM @Issue192 WHERE Field IN @µ AND Field_1 IN @µµ",
         [FactLongRunning]
         public void TestListExpansionPadding_Disabled() => TestListExpansionPadding(false);
 
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void OleDbParamFilterFails(bool legacyParameterToken)
+        {
+            SqlMapper.PurgeQueryCache();
+            var oldValue = SqlMapper.Settings.SupportLegacyParameterTokens;
+            try
+            {
+                SqlMapper.Settings.SupportLegacyParameterTokens = legacyParameterToken;
+
+                if (legacyParameterToken) // OLE DB parameter support enabled; can false-positive
+                {
+                    Assert.Throws<NotSupportedException>(() => GetValue(connection));
+                }
+                else // OLE DB parameter support disabled; more reliable
+                {
+                    Assert.Equal("this ? could be awkward", GetValue(connection));
+                }
+            }
+            finally
+            {
+                SqlMapper.Settings.SupportLegacyParameterTokens = oldValue;
+            }
+
+            static string GetValue(DbConnection connection)
+                => connection.QuerySingle<string>("select 'this ? could be awkward'",
+                    new TypeWithDodgyProperties());
+        }
+
         private void TestListExpansionPadding(bool enabled)
         {
             bool oldVal = SqlMapper.Settings.PadListExpansions;
@@ -1592,6 +1637,124 @@ select @hits as [Hits], (@count - @misses) as [Misses], @query as [Query];
             int blocks = count / padFactor, delta = count % padFactor;
             if (delta != 0) blocks++;
             return blocks * padFactor;
+        }
+
+        [Fact]
+        public void Issue1907_SqlDecimalPreciseValues()
+        {
+            bool close = false;
+            try
+            {
+                if (connection.State != ConnectionState.Open)
+                {
+                    connection.Open();
+                    close = true;
+                }
+                connection.Execute(@"
+create table #Issue1907 (
+    Id int not null primary key identity(1,1),
+    Value numeric(30,15) not null);");
+
+                const string PreciseValue = "999999999999999.999999999999999";
+                SqlDecimal sentValue = SqlDecimal.Parse(PreciseValue), recvValue;
+                connection.Execute("insert #Issue1907 (Value) values (@value)", new { value = sentValue });
+
+                // access via vendor-specific API; if this fails, nothing else can work
+                using (var wrappedReader = connection.ExecuteReader("select Id, Value from #Issue1907"))
+                {
+                    var reader = Assert.IsAssignableFrom<IWrappedDataReader>(wrappedReader).Reader;
+                    Assert.True(reader.Read());
+                    if (reader is Microsoft.Data.SqlClient.SqlDataReader msReader)
+                    {
+                        recvValue = msReader.GetSqlDecimal(1);
+                    }
+#pragma warning disable CS0618 // Type or member is obsolete
+                    else if (reader is System.Data.SqlClient.SqlDataReader sdReader)
+                    {
+                        recvValue = sdReader.GetSqlDecimal(1);
+                    }
+#pragma warning restore CS0618 // Type or member is obsolete
+                    else
+                    {
+                        throw new InvalidOperationException($"unexpected reader type: {reader.GetType().FullName}");
+                    }
+                    Assert.Equal(sentValue, recvValue);
+                    Assert.Equal(PreciseValue, recvValue.ToString());
+
+                    Assert.False(reader.Read());
+                    Assert.False(reader.NextResult());
+                }
+
+                // access via generic API
+                using (var wrappedReader = connection.ExecuteReader("select Id, Value from #Issue1907"))
+                {
+                    var reader = Assert.IsAssignableFrom<DbDataReader>(Assert.IsAssignableFrom<IWrappedDataReader>(wrappedReader).Reader);
+                    Assert.True(reader.Read());
+                    recvValue = reader.GetFieldValue<SqlDecimal>(1);
+                    Assert.Equal(sentValue, recvValue);
+                    Assert.Equal(PreciseValue, recvValue.ToString());
+
+                    Assert.False(reader.Read());
+                    Assert.False(reader.NextResult());
+                }
+
+                // prove that we **cannot** fix ExecuteScalar, because ADO.NET itself doesn't work for that
+                Assert.Throws<OverflowException>(() =>
+                {
+                    using var cmd = connection.CreateCommand();
+                    cmd.CommandText = "select Value from #Issue1907";
+                    cmd.CommandType = CommandType.Text;
+                    _ = cmd.ExecuteScalar();
+                });
+
+                // prove that simple read: works
+                recvValue = connection.QuerySingle<SqlDecimal>("select Value from #Issue1907");
+                Assert.Equal(sentValue, recvValue);
+                Assert.Equal(PreciseValue, recvValue.ToString());
+
+                recvValue = connection.QuerySingle<SqlDecimal?>("select Value from #Issue1907")!.Value;
+                Assert.Equal(sentValue, recvValue);
+                Assert.Equal(PreciseValue, recvValue.ToString());
+
+                // prove that object read: works
+                recvValue = connection.QuerySingle<HazSqlDecimal>("select Id, Value from #Issue1907").Value;
+                Assert.Equal(sentValue, recvValue);
+                Assert.Equal(PreciseValue, recvValue.ToString());
+
+                recvValue = connection.QuerySingle<HazNullableSqlDecimal>("select Id, Value from #Issue1907").Value!.Value;
+                Assert.Equal(sentValue, recvValue);
+                Assert.Equal(PreciseValue, recvValue.ToString());
+
+                // prove that value-tuple read: works
+                recvValue = connection.QuerySingle<(int Id, SqlDecimal Value)>("select Id, Value from #Issue1907").Value;
+                Assert.Equal(sentValue, recvValue);
+                Assert.Equal(PreciseValue, recvValue.ToString());
+
+                recvValue = connection.QuerySingle<(int Id, SqlDecimal? Value)>("select Id, Value from #Issue1907").Value!.Value;
+                Assert.Equal(sentValue, recvValue);
+                Assert.Equal(PreciseValue, recvValue.ToString());
+            }
+            finally
+            {
+                if (close) connection.Close();
+            }
+            
+        }
+        class HazSqlDecimal
+        {
+            public int Id { get; set; }
+            public SqlDecimal Value { get; set; }
+        }
+
+        class HazNullableSqlDecimal
+        {
+            public int Id { get; set; }
+            public SqlDecimal? Value { get; set; }
+        }
+
+        class TypeWithDodgyProperties
+        {
+            public string Name => throw new NotSupportedException();
         }
     }
 }
